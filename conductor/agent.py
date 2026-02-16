@@ -32,7 +32,13 @@ class ConductorAgent:
         Args:
             provider: AI provider ('google', 'grok', 'openai', 'perplexity', or 'auto')
         """
-        self.retriever = ConversationRetriever()
+        # Try to initialize retriever, but don't crash if it fails
+        try:
+            self.retriever = ConversationRetriever()
+        except Exception as e:
+            logger.warning(f"Could not initialize retriever: {e}. Running without memory.")
+            self.retriever = None
+            
         self.client = None
         self.provider = provider
         self.model = settings.conductor_model

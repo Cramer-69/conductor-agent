@@ -39,9 +39,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-conductor = ConductorAgent()
-voice_processor = get_voice_processor()
+# Initialize services (lazy initialization to avoid startup crashes)
+conductor = None
+voice_processor = None
+
+def get_conductor():
+    """Lazy initialization of conductor agent."""
+    global conductor
+    if conductor is None:
+        try:
+            conductor = ConductorAgent()
+        except Exception as e:
+            logger.error(f"Failed to initialize conductor: {e}")
+            # Create a minimal fallback conductor
+            conductor = ConductorAgent.__new__(ConductorAgent)
+            conductor.provider = "openai"
+            conductor.model = "gpt-4o-mini"
+            conductor.current_skill = None
+    return conductor
+
+def get_voice():
+    """Lazy initialization of voice processor."""
+    global voice_processor
+    if voice_processor is None:
+        voice_processor = get_voice_processor()
+    return voice_processor
 
 # Create temp directory for audio files
 TEMP_DIR = Path("temp_audio")
@@ -113,7 +135,7 @@ async def chat(request: ChatRequest):
     try:
         logger.info(f"Chat request: {request.query[:100]}...")
         
-        result = conductor.chat(
+        result = get_conductor().chat(
             query=request.query,
             platform_filter=request.platform_filter
         )
@@ -152,16 +174,17 @@ async def voice_chat(audio: UploadFile = File(...)):
         logger.info(f"Received audio file: {input_path}")
         
         # Transcribe audio to text
-        transcription = await voice_processor.transcribe_audio(input_path)
+        vp = get_voice()
+        transcription = await vp.transcribe_audio(input_path)
         logger.info(f"Transcription: {transcription}")
         
         # Get response from conductor
-        result = conductor.chat(query=transcription)
+        result = get_conductor().chat(query=transcription)
         response_text = result['response']
         
         # Synthesize speech from response
         output_path = TEMP_DIR / f"output_{audio_id}.mp3"
-        await voice_processor.synthesize_speech(
+        await vp.synthesize_speech(
             text=response_text,
             output_path=output_path,
             voice=current_voice_settings.voice
