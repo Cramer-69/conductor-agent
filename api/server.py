@@ -47,15 +47,26 @@ def get_conductor():
     """Lazy initialization of conductor agent."""
     global conductor
     if conductor is None:
+        # Use minimal conductor in cloud environments (no ChromaDB)
+        is_cloud = os.getenv("RENDER") or os.getenv("RAILWAY") or os.getenv("HEROKU")
+        
         try:
-            conductor = ConductorAgent()
+            if is_cloud:
+                from conductor.minimal import MinimalConductor
+                conductor = MinimalConductor()
+                logger.info("Using minimal conductor (cloud mode - no memory)")
+            else:
+                conductor = ConductorAgent()
+                logger.info("Using full conductor (local mode - with memory)")
         except Exception as e:
             logger.error(f"Failed to initialize conductor: {e}")
-            # Create a minimal fallback conductor
-            conductor = ConductorAgent.__new__(ConductorAgent)
-            conductor.provider = "openai"
-            conductor.model = "gpt-4o-mini"
-            conductor.current_skill = None
+            # Ultimate fallback - minimal conductor
+            try:
+                from conductor.minimal import MinimalConductor
+                conductor = MinimalConductor()
+                logger.info("Fallback to minimal conductor due to error")
+            except:
+                raise ValueError(f"Could not initialize any conductor: {e}")
     return conductor
 
 def get_voice():
