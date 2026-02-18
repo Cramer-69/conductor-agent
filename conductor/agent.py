@@ -3,24 +3,35 @@ Conductor agent that uses RAG to answer questions with context from all platform
 """
 
 from typing import List, Dict, Any
+import sys
+from pathlib import Path
+
+# Gracefully handle optional dependencies
+GOOGLE_AVAILABLE = False
+OPENAI_AVAILABLE = False
+
 try:
     import google.generativeai as genai
     GOOGLE_AVAILABLE = True
-except ImportError:
-    GOOGLE_AVAILABLE = False
+except (ImportError, Exception) as e:
+    pass
 
 try:
     from openai import OpenAI
     OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
+except (ImportError, Exception) as e:
+    pass
 
-import httpx
+try:
+    import httpx
+except (ImportError, Exception) as e:
+    httpx = None
+
+# Core imports
 from knowledge_base.retrieval import ConversationRetriever
 from config.settings import settings
 from utils.logger import logger
 from skills.manager import SkillManager
-from pathlib import Path
 
 
 class ConductorAgent:

@@ -71,5 +71,12 @@
     ],
     "git.followTagsWhenSync": true,
     "git.fetchOnPull": true,
-    "git.enableSmartCommit": true
+    "git.enableSmartCommit": true,
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.disableTaggedHints": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.typeEvaluation.strictDictionaryInference": true,
+    "python.analysis.typeEvaluation.enableExperimentalFeatures": true,
+    "python.analysis.typeEvaluation.strictListInference": true,
+    "python.analysis.generateWithTypeAnnotation": true
 }
