@@ -230,8 +230,8 @@ async def voice_chat(
     """
     try:
         audio_id = str(uuid.uuid4())
-        input_path = TEMP_DIR / f"input_{audio_id}.webm"
-
+        suffix = Path(audio.filename).suffix if audio.filename else ".webm"
+        input_path = TEMP_DIR / f"input_{audio_id}{suffix}"
         with open(input_path, "wb") as f:
             content = await audio.read()
             f.write(content)
