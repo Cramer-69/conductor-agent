@@ -29,6 +29,14 @@ This will:
 - **Grok / xAI** (Added via Desktop key)
 - **Perplexity** (Search enabled)
 - **OpenAI** (Fallback)
+- **Claude / Titan / Llama on AWS Bedrock** — reach these through your own
+  AWS account, no per-provider API key required. See
+  [AWS Bedrock](#aws-bedrock) below.
+
+The conductor auto-detects whichever provider is configured. Bedrock is
+selected when AWS credentials are present and no higher-priority key is set —
+its calls go through Bedrock's model-agnostic **Converse** API, so switching
+models is just a `BEDROCK_MODEL_ID` change.
 
 ## 🚀 Quick Start
 
@@ -248,9 +256,63 @@ At least one LLM provider key:
 | `OPENAI_API_KEY` | https://platform.openai.com/api-keys |
 | `ANTHROPIC_API_KEY` | https://console.anthropic.com/settings/keys |
 | `GOOGLE_API_KEY` | https://aistudio.google.com/app/apikey |
+| `AWS_BEARER_TOKEN_BEDROCK` *or* `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` | AWS Bedrock (see below) |
 
 The container binds to `0.0.0.0:${PORT}` (default `8080`). Cloud Run / Render
 inject `PORT` automatically.
+
+### AWS Bedrock
+
+Reach Claude, Titan, Llama and other models through your own AWS account —
+no separate provider API key to manage, since auth rides on whatever AWS
+credentials the box already has. Calls go through Bedrock's model-agnostic
+**Converse** API, so switching models is just a `BEDROCK_MODEL_ID` change.
+
+#### 1. Enable model access
+
+In the [Bedrock console](https://console.aws.amazon.com/bedrock/home#/modelaccess),
+pick your **region** and request access to the model(s) you want (e.g. a
+Claude model). Access is granted per-region and is usually instant. The region
+must be one where both Bedrock and that model are available (e.g. `us-east-1`).
+
+#### 2. Configure credentials — pick one
+
+- **Bedrock API key (simplest):** Bedrock console → **API keys** → *Generate*.
+  Set `AWS_BEARER_TOKEN_BEDROCK=...`.
+- **AWS access keys:** an IAM user/role with `bedrock:InvokeModel` (and
+  `bedrock:InvokeModelWithResponseStream` for streaming). IAM → Users →
+  *Security credentials* → *Create access key*. Set `AWS_ACCESS_KEY_ID` and
+  `AWS_SECRET_ACCESS_KEY` (plus `AWS_SESSION_TOKEN` for temporary STS creds).
+- **Instance role (AWS compute only):** on EC2 / ECS / EKS / Lambda with an
+  attached role that has Bedrock permissions, leave the above unset — boto3
+  picks up the role automatically. Just set `AWS_REGION`. (Cloud Run and
+  Render don't provide AWS IAM roles to containers — use explicit credentials
+  there; see [Using Bedrock on Cloud Run / Render](#using-bedrock-on-cloud-run--render).)
+
+#### 3. Pick a model (optional)
+
+`BEDROCK_MODEL_ID` defaults to `anthropic.claude-3-5-sonnet-20240620-v1:0`.
+List the exact IDs enabled in your account/region — some newer models are
+inference-profile only and need a region-prefixed id like
+`us.anthropic.claude-3-5-sonnet-20241022-v2:0`:
+
+```bash
+aws bedrock list-foundation-models --region us-east-1 \
+  --query "modelSummaries[?providerName=='Anthropic'].modelId" --output table
+```
+
+#### 4. Run it
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e AWS_REGION=us-east-1 \
+  -e AWS_BEARER_TOKEN_BEDROCK=your_bedrock_api_key \
+  -e BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20240620-v1:0 \
+  conductor-agent
+```
+
+Confirm with `/health` — `providers` should include `bedrock` and
+`api_keys_configured` should be `true`.
 
 ### Local Docker
 
@@ -312,6 +374,24 @@ gcloud run services update conductor-agent --region us-central1 \
 The repo includes `render.yaml`. In the Render dashboard set `OPENAI_API_KEY`
 under **Environment** — do not commit it. Render injects `PORT` automatically.
 
+### Using Bedrock on Cloud Run / Render
+
+Cloud Run and Render don't give containers AWS IAM roles the way EC2/ECS do,
+so pass explicit AWS credentials as secrets alongside `AWS_REGION`:
+
+```bash
+gcloud run deploy conductor-agent \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars AWS_REGION=us-east-1 \
+  --set-secrets AWS_ACCESS_KEY_ID=aws-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-secret-access-key:latest
+```
+
+Scope the IAM user/role to `bedrock:InvokeModel` and
+`bedrock:InvokeModelWithResponseStream` on the model ARNs you use. A Bedrock
+API key (`AWS_BEARER_TOKEN_BEDROCK`) works here too, as a single secret.
+
 ### Troubleshooting
 
 | Symptom | Fix |
@@ -319,6 +399,8 @@ under **Environment** — do not commit it. Render injects `PORT` automatically.
 | `502` / "service unavailable" on Cloud Run | Container didn't bind to `$PORT`. Ensure you're using the Dockerfile in this repo (shell-form `CMD`). |
 | Logs show `No LLM API key is configured` | Set `OPENAI_API_KEY` (or `--set-secrets`) and redeploy. |
 | `/api/chat` returns 500 | Check `/health` — if `api_keys_configured: false`, the key isn't reaching the container. |
+| Bedrock calls fail with `AccessDeniedException` | Model access isn't enabled for that model/region in the Bedrock console, or the IAM principal lacks `bedrock:InvokeModel*`. |
+| Bedrock calls fail with `ValidationException: invalid model identifier` | `BEDROCK_MODEL_ID` isn't a valid ID for that region. Run `aws bedrock list-foundation-models` (see [step 3](#3-pick-a-model-optional)); some models need a `us.`-prefixed inference-profile id. |
 | `FileNotFoundError` for `antigravity_brain_dir` | Leave `ANTIGRAVITY_BRAIN_DIR` blank unless you actually have that folder. |
 
 ## 🚧 Future Enhancements
