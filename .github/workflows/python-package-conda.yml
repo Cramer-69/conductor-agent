@@ -31,3 +31,39 @@ jobs:
       - name: Test with pytest
         run: |
           pytest || ([ $? -eq 5 ] && echo 'No tests collected — skipping' && exit 0)
+import matplotlib.pyplot as plt
+
+# Hardcoded weather data for a city
+days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+temperature = [22, 24, 19, 23, 25, 20, 21]  # in Celsius
+humidity = [60, 55, 70, 65, 50, 75, 80]    # in percentage
+wind_speed = [15, 18, 20, 10, 12, 8, 5]   # in km/h
+
+# Create subplots
+fig, ax1 = plt.subplots()
+
+# Plot temperature
+ax1.set_xlabel('Days')
+ax1.set_ylabel('Temperature (C)', color='tab:red')
+ax1.plot(days, temperature, color='tab:red', label='Temperature')
+ax1.tick_params(axis='y', labelcolor='tab:red')
+
+# Create a second y-axis to plot humidity
+ax2 = ax1.twinx()
+ax2.set_ylabel('Humidity (%)', color='tab:blue')
+ax2.plot(days, humidity, color='tab:blue', linestyle='--', label='Humidity')
+ax2.tick_params(axis='y', labelcolor='tab:blue')
+
+# Create a third y-axis to plot wind speed (Note: This involves creating a twin y-axis with a different position)
+ax3 = ax1.twinx()
+ax3.spines['right'].set_position(('outward', 60))  # Offset the third y-axis
+ax3.set_ylabel('Wind Speed (km/h)', color='tab:green')
+ax3.plot(days, wind_speed, color='tab:green', linestyle='-.', label='Wind Speed')
+ax3.tick_params(axis='y', labelcolor='tab:green')
+
+# Title and layout adjustments
+plt.title('Weather Data for the Week')
+fig.tight_layout()  # Adjust layout to fit all labels
+
+# Show the plot
+plt.show()
