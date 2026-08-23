@@ -3,6 +3,7 @@ Conductor agent that uses RAG to answer questions with context from all platform
 """
 
 from typing import List, Dict, Any
+import re
 import sys
 from pathlib import Path
 
@@ -29,6 +30,7 @@ except (ImportError, Exception) as e:
 
 # Core imports
 from knowledge_base.retrieval import ConversationRetriever
+from cabinet.store import CabinetStore
 from config.settings import settings
 from utils.logger import logger
 from skills.manager import SkillManager
@@ -49,6 +51,7 @@ class ConductorAgent:
         except Exception as e:
             logger.warning(f"Could not initialize retriever: {e}. Running without memory.")
             self.retriever = None
+        self.cabinet = CabinetStore(settings.get_cabinet_path())
             
         self.client = None
         self.provider = provider
@@ -87,6 +90,20 @@ class ConductorAgent:
             logger.info(f"Activated skill: {skill.name}")
             return True
         return False
+
+    def _search_cabinet(self, query: str, platform_filter: str = None) -> List[Dict[str, Any]]:
+        """Search local files only when the request refers to the filing cabinet."""
+        requested = platform_filter == "cabinet" or bool(
+            re.search(
+                r"\b(cabinet|document|file|archive|history|research|business plan|"
+                r"email|youtube|log|xcode)\b",
+                query,
+                flags=re.IGNORECASE,
+            )
+        )
+        if not requested or not self.cabinet.enabled:
+            return []
+        return self.cabinet.search(query)
     
     def _init_client(self):
         """Lazy initialize AI client based on provider."""
@@ -150,11 +167,13 @@ class ConductorAgent:
         # Retrieve relevant context
         logger.info(f"Processing query: {query[:100]}...")
         
-        results = self.retriever.search_conversations(
-            query=query,
-            n_results=5,
-            platform_filter=platform_filter
-        )
+        results = []
+        if self.retriever is not None and platform_filter != "cabinet":
+            results = self.retriever.search_conversations(
+                query=query,
+                n_results=5,
+                platform_filter=platform_filter
+            )
         
         # Format context
         context_parts = []
@@ -175,6 +194,21 @@ class ConductorAgent:
             # Add to context
             context_parts.append(
                 f"[Source: {meta['platform'].upper()} - {meta['title']}]\n{content}"
+            )
+
+        cabinet_paths = set()
+        for result in self._search_cabinet(query, platform_filter):
+            if result['path'] not in cabinet_paths:
+                cabinet_paths.add(result['path'])
+                sources.append({
+                    'platform': 'cabinet',
+                    'title': result['title'],
+                    'path': result['path'],
+                    'conversation_id': '',
+                    'score': result['score'],
+                })
+            context_parts.append(
+                f"[Source: LOCAL CABINET - {result['title']}]\n{result['content']}"
             )
         
         context = "\n\n---\n\n".join(context_parts)
@@ -302,11 +336,13 @@ Please provide a helpful answer based on this context. Cite which conversations/
         self._init_client()
         
         # Retrieve context
-        results = self.retriever.search_conversations(
-            query=query,
-            n_results=5,
-            platform_filter=platform_filter
-        )
+        results = []
+        if self.retriever is not None and platform_filter != "cabinet":
+            results = self.retriever.search_conversations(
+                query=query,
+                n_results=5,
+                platform_filter=platform_filter
+            )
         
         # Format context and sources
         context_parts = []
@@ -324,6 +360,20 @@ Please provide a helpful answer based on this context. Cite which conversations/
             
             context_parts.append(
                 f"[Source: {meta['platform'].upper()} - {meta['title']}]\n{content}"
+            )
+
+        cabinet_paths = set()
+        for result in self._search_cabinet(query, platform_filter):
+            if result['path'] not in cabinet_paths:
+                cabinet_paths.add(result['path'])
+                sources.append({
+                    'platform': 'cabinet',
+                    'title': result['title'],
+                    'path': result['path'],
+                    'score': result['score'],
+                })
+            context_parts.append(
+                f"[Source: LOCAL CABINET - {result['title']}]\n{result['content']}"
             )
         
         context = "\n\n---\n\n".join(context_parts)

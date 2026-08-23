@@ -25,6 +25,17 @@ class Settings(BaseSettings):
     perplexity_api_key: Optional[str] = None
     xai_api_key: Optional[str] = None
 
+    # Persistent cloud memory
+    mem0_api_key: Optional[str] = None
+    mem0_user_id: str = "john-cramer"
+    mem0_agent_id: str = "ara-conductor"
+
+    # Web retrieval
+    firecrawl_api_key: Optional[str] = None
+
+    # Local-first filing cabinet. Raw sources remain in their original paths.
+    cabinet_db_path: str = "./data/cabinet/cabinet.sqlite3"
+
     # AWS Bedrock (access Claude / Titan / Llama etc. through AWS)
     # Auth is either a Bedrock API key (bearer token) OR standard AWS
     # access-key credentials. boto3 also picks these up from the ambient
@@ -85,6 +96,11 @@ class Settings(BaseSettings):
         """Get absolute path to processed data directory."""
         base = self.get_base_path()
         return base / self.processed_data_dir
+
+    def get_cabinet_path(self) -> Path:
+        """Get the local filing-cabinet database path."""
+        path = Path(self.cabinet_db_path).expanduser()
+        return path if path.is_absolute() else self.get_base_path() / path
     
     def bedrock_configured(self) -> bool:
         """True if AWS Bedrock has usable credentials.
@@ -156,6 +172,7 @@ def init_directories():
         base / "data" / "raw",
         base / "data" / "processed",
         base / "data" / "chroma_db",
+        base / "data" / "cabinet",
         base / "logs",
     ]
     

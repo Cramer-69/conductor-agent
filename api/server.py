@@ -18,10 +18,10 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from conductor.agent import ConductorAgent
 from voice.voice_processor import get_voice_processor
 from utils.logger import logger
 from config.settings import settings
+from cabinet.store import CabinetStore
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -42,6 +42,7 @@ app.add_middleware(
 # Initialize services (lazy initialization to avoid startup crashes)
 conductor = None
 voice_processor = None
+cabinet = None
 
 
 def _is_cloud() -> bool:
@@ -69,8 +70,9 @@ def get_conductor():
             if is_cloud:
                 from conductor.minimal import MinimalConductor
                 conductor = MinimalConductor()
-                logger.info("Using minimal conductor (cloud mode - no memory)")
+                logger.info("Using minimal conductor (cloud mode with optional Mem0 memory)")
             else:
+                from conductor.agent import ConductorAgent
                 conductor = ConductorAgent()
                 logger.info("Using full conductor (local mode - with memory)")
         except Exception as e:
@@ -94,6 +96,14 @@ def get_voice_processor_instance():
     return voice_processor
 
 
+def get_cabinet() -> CabinetStore:
+    """Lazy initialization of the local filing cabinet."""
+    global cabinet
+    if cabinet is None:
+        cabinet = CabinetStore(settings.get_cabinet_path())
+    return cabinet
+
+
 # Create temp directory for audio files
 TEMP_DIR = Path("temp_audio")
 TEMP_DIR.mkdir(exist_ok=True)
@@ -113,6 +123,11 @@ class ChatResponse(BaseModel):
 
 class VoiceSettings(BaseModel):
     voice: str = "nova"
+
+
+class CabinetSearchRequest(BaseModel):
+    query: str
+    limit: int = 5
 
 
 # In-memory voice settings (could be persisted later)
@@ -164,6 +179,41 @@ async def health_check():
         "mode": "minimal" if _is_cloud() else "full",
         "providers": providers,
         "api_keys_configured": bool(providers),
+        "memory": {
+            "provider": "mem0",
+            "configured": bool(settings.mem0_api_key),
+        },
+        "web_retrieval": {
+            "provider": "firecrawl",
+            "configured": bool(settings.firecrawl_api_key),
+        },
+        "filing_cabinet": get_cabinet().status(),
+        "voice_modes": ["push-to-talk", "hands-free"],
+    }
+
+
+@app.get("/api/cabinet/status")
+async def cabinet_status():
+    """Return local filing-cabinet index counts without document contents."""
+    return get_cabinet().status()
+
+
+@app.post("/api/cabinet/search")
+async def cabinet_search(request: CabinetSearchRequest):
+    """Search the local index; source files remain untouched."""
+    results = get_cabinet().search(request.query, limit=request.limit)
+    return {
+        "query": request.query,
+        "results": [
+            {
+                "title": result["title"],
+                "path": result["path"],
+                "source_type": result["source_type"],
+                "snippet": result["snippet"],
+                "score": result["score"],
+            }
+            for result in results
+        ],
     }
 
 
