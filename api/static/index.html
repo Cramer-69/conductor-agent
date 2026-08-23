@@ -91,7 +91,8 @@
         <!-- Header -->
         <div class="glass rounded-3xl p-6 mb-4 text-white">
             <h1 class="text-3xl font-bold mb-2">🎤 Conductor</h1>
-            <p class="text-sm opacity-90">Voice AI with Memory</p>
+            <p class="text-sm opacity-90">OpenAI-led voice council with persistent memory</p>
+            <p class="text-xs opacity-75 mt-2">OpenAI · Claude · Grok · Gemini · Perplexity · OpenRouter</p>
         </div>
 
         <!-- Conversation Container -->
@@ -99,31 +100,22 @@
             <div id="messages" class="space-y-4">
                 <div class="text-white text-center opacity-75 py-8">
                     <p class="text-lg mb-2">👋 Hi there!</p>
-                    <p class="text-sm">Tap the microphone and start talking</p>
+                    <p class="text-sm">Tap once, then talk naturally. Silence ends your turn.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Text Input -->
-        <div class="glass rounded-2xl p-3 mb-4 flex gap-2">
-            <input id="textInput" type="text" placeholder="Type a message..."
-                class="flex-1 bg-white/20 text-white placeholder-white/50 rounded-xl px-4 py-3 text-sm border border-white/20 outline-none focus:border-white/40"
-            />
-            <button id="sendButton" class="bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl px-5 py-3 font-semibold text-sm hover:opacity-90 active:scale-95 transition-all">
-                Send
-            </button>
-        </div>
-
         <!-- Microphone Button -->
-        <div class="flex justify-center mb-6">
-            <button id="micButton" class="mic-button w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white text-4xl shadow-2xl hover:brightness-110 active:scale-90 transition-all">
+        <div class="flex flex-col items-center mb-6">
+            <button id="micButton" type="button" aria-label="Start hands-free conversation" class="mic-button w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white text-4xl shadow-2xl hover:brightness-110 active:scale-90 transition-all">
                 🎤
             </button>
+            <p id="sessionLabel" class="text-white text-sm mt-3">Tap once to start hands-free conversation</p>
         </div>
 
         <!-- Status -->
         <div id="status" class="text-center text-white mb-4">
-            <p class="text-sm opacity-75">Type a message or tap 🎤 to talk</p>
+            <p class="text-sm opacity-75">Ready</p>
         </div>
 
         <!-- Recording Indicator -->
@@ -140,6 +132,10 @@
             <details>
                 <summary class="text-white cursor-pointer font-semibold mb-2">⚙️ Settings</summary>
                 <div class="mt-2">
+                    <label class="text-white text-sm flex items-center justify-between mb-4">
+                        <span>Hands-free conversation</span>
+                        <input id="conversationMode" type="checkbox" checked class="h-5 w-5 accent-purple-500">
+                    </label>
                     <label class="text-white text-sm block mb-2">Voice:</label>
                     <select id="voiceSelect" class="w-full p-2 rounded-lg bg-white/20 text-white border border-white/30">
                         <option value="nova">Nova (Clear female)</option>
@@ -149,6 +145,17 @@
                         <option value="onyx">Onyx (Deep male)</option>
                         <option value="shimmer">Shimmer (Soft female)</option>
                     </select>
+                    <details class="mt-4">
+                        <summary class="text-white/70 text-xs cursor-pointer">Typing fallback</summary>
+                        <div class="mt-2 flex gap-2">
+                            <input id="textInput" type="text" placeholder="Optional text fallback"
+                                class="flex-1 bg-white/20 text-white placeholder-white/50 rounded-xl px-3 py-2 text-sm border border-white/20 outline-none focus:border-white/40"
+                            />
+                            <button id="sendButton" class="bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl px-4 py-2 font-semibold text-sm">
+                                Send
+                            </button>
+                        </div>
+                    </details>
                 </div>
             </details>
         </div>
