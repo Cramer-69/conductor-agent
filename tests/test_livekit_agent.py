@@ -1,5 +1,12 @@
 import unittest
 
+import pytest
+
+# The voice agent ships in its own image and pins livekit-agents in
+# requirements.livekit.txt, so CI installs from requirements-cloud.txt
+# without it. Skip rather than error out during collection.
+pytest.importorskip("livekit")
+
 from livekit_agent import AraVoiceAgent, post_to_conductor
 
 
