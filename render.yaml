@@ -10,6 +10,16 @@ services:
     envVars:
       - key: OPENAI_API_KEY
         sync: false
+      - key: MEM0_API_KEY
+        sync: false
+      - key: MEM0_USER_ID
+        value: john-cramer
+      - key: MEM0_AGENT_ID
+        value: ara-conductor
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: CONDUCTOR_API_URL
+        value: https://conductor-agent.onrender.com
       # Optional alternates — uncomment + set in Render dashboard if used:
       # - key: ANTHROPIC_API_KEY
       #   sync: false

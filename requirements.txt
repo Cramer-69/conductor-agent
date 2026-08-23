@@ -1,5 +1,6 @@
 langchain>=0.1.0
 langgraph>=0.0.30
+livekit-agents[openai]~=1.6
 chromadb>=0.4.22
 fastapi>=0.109.0
 uvicorn>=0.27.0
@@ -20,5 +21,5 @@ httpx>=0.26.0
 gunicorn>=21.2.0
 google-generativeai>=0.3.0
 boto3>=1.39.0
+mem0ai>=1.0.0,<2.0.0
 sentence-transformers==2.7.0
-

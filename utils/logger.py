@@ -68,3 +68,17 @@ def log_processing_stats(processor_name: str, **stats):
     logger.info(f"[bold blue]{processor_name}[/bold blue] Processing Stats:", extra={"markup": True})
     for key, value in stats.items():
         logger.info(f"  • {key}: {value}")
+
+
+def describe_integrations(**tools) -> str:
+    """Summarize which optional integrations came up enabled.
+
+    Each tool exposes an `enabled` property that is False when its API key is
+    absent, in which case the tool no-ops instead of raising. Reporting the
+    state at startup keeps a missing key from looking like a working feature
+    that simply never remembers or finds anything.
+    """
+    return " ".join(
+        f"{name}={'on' if getattr(tool, 'enabled', False) else 'OFF (no key)'}"
+        for name, tool in tools.items()
+    )
