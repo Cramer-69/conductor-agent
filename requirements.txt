@@ -1,6 +1,5 @@
 langchain>=0.1.0
 langgraph>=0.0.30
-livekit-agents[openai]~=1.6
 chromadb>=0.4.22
 fastapi>=0.109.0
 uvicorn>=0.27.0
